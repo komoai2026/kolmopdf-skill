@@ -18,9 +18,9 @@ Total cost ≈ `pages × 2 + 1`.
 
 ## Recipe 2 — Read + Q&A about a paper
 
-1. `kolmopdf_parse_pdf({ file_path })` → `output.markdown_path`, `preview`.
-2. `Read` the `markdown_path` to load full content into context.
-3. Answer the user's question grounded strictly in the parsed markdown. Cite section headings where useful.
+1. Parse via Jobs API v1 or MCP (`enrichment` default adds `outline.md` + `summary.md` sidecars; primary MD unchanged).
+2. Unzip download if needed; `Read` primary markdown and optional `summary.md` / `outline.md`.
+3. Answer grounded strictly in those files. Do not invent sidecars without download.
 
 ## Recipe 3 — Translate then deliver bilingual
 

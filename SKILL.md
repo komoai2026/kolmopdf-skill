@@ -1,108 +1,134 @@
 ---
 name: kolmopdf
-description: Use this skill ONLY when the user gives an explicit operational instruction to process a PDF or Markdown file. Specifically: (1) explicitly asks to parse/convert a PDF into Markdown, (2) explicitly asks for layout-preserving PDF translation to produce a new translated PDF, (3) explicitly asks to export/convert Markdown to DOCX/HTML/PDF/LaTeX, or (4) a combination of the above (e.g. "parse this PDF to Markdown, then translate it, then export to DOCX"). Do NOT trigger for general PDF reading, summarization, or Q&A unless the user explicitly requests Markdown extraction first. Triggers: "parse PDF to markdown", "convert PDF to markdown", "translate this PDF preserving layout", "export markdown to docx/html/pdf/latex", "PDF to markdown with tables as images", "parse and translate this PDF".
-allowed-tools: mcp__kolmopdf__kolmopdf_parse_pdf, mcp__kolmopdf__kolmopdf_translate_pdf, mcp__kolmopdf__kolmopdf_convert_markdown, mcp__kolmopdf__kolmopdf_estimate_cost, mcp__kolmopdf__kolmopdf_check_balance, Read, Write
+description: Use when the user explicitly wants KolmoPDF cloud processing of a PDF/Markdown file — parse PDF to Markdown, layout-preserving PDF translation, Markdown export (DOCX/HTML/PDF/LaTeX), or parse-time reading aids (outline/summary). Prefer the public Jobs API v1 via curl/Bash when MCP tools are unavailable. Do NOT invent outline/summary/verification files without a successful API download. Do NOT use for casual PDF chat unless the user asked for cloud parse or reading aids.
+allowed-tools: Bash, Read, Write, mcp__kolmopdf__kolmopdf_parse_pdf, mcp__kolmopdf__kolmopdf_translate_pdf, mcp__kolmopdf__kolmopdf_convert_markdown, mcp__kolmopdf__kolmopdf_estimate_cost, mcp__kolmopdf__kolmopdf_check_balance, mcp__kolmopdf__kolmopdf_get_task_status
 ---
 
-# KolmoPDF Skill
+# KolmoPDF Skill (API-first)
 
-You have access to KolmoPDF tools (prefix `kolmopdf_*`) for high-fidelity PDF parsing and translation. These tools call a paid cloud service. Always follow the rules below.
+KolmoPDF is a **paid cloud service** (Plus/Pro API key). Capabilities live on **Jobs API v1**. MCP tools are optional convenience wrappers.
+
+Base URL: `https://www.kolmopdf.com`  
+Auth: `Authorization: Bearer $KOLMOPDF_API_KEY` or `X-API-Key: $KOLMOPDF_API_KEY`
+
+Official guide: https://www.kolmopdf.com/api-docs
 
 ## When to use
 
-This skill triggers ONLY on explicit user instructions to perform a file operation:
-
-- User explicitly asks to parse/convert a PDF into Markdown → `kolmopdf_parse_pdf`.
-- User explicitly asks for layout-preserving PDF translation → `kolmopdf_translate_pdf`.
-- User explicitly asks to export Markdown to DOCX/HTML/PDF/LaTeX → `kolmopdf_convert_markdown`.
-- User requests a combination (e.g. "parse this PDF, translate it, then export to DOCX") → chain the tools in sequence.
-
-Do NOT trigger when:
-- User just wants to read or summarize a PDF without requesting Markdown output.
-- User asks general questions about a PDF's content (use built-in Read instead).
-- User mentions PDF in passing without an explicit processing instruction.
-
-## Natural language parameter mapping
-
-Users may describe parameters in natural language. Map their descriptions to tool parameters:
-
-| User says | Parameter |
+| User intent | Action |
 | --- | --- |
-| "tables as images" / "keep table layout" | `table_mode="image"` |
-| "use dollar signs for formulas" / "KaTeX format" | `formula_format="dollar"` |
-| "use bracket notation" / "LaTeX-style delimiters" | `formula_format="bracket"` |
-| "translate to Chinese/Japanese/..." | `enable_translation=true`, `target_language="zh"/"ja"/...` |
-| "bilingual output" / "show both languages" | `output_options=["bilingual"]` |
-| "images as URLs" / "don't download images" | `images_as_url=true` |
-| "merge tables across pages" / "cross-page tables" | `enable_cross_page_merge=true` |
-| "side by side translation" | `layout_modes=["side_by_side"]` |
-| "translate images too" | `enable_image_translation=true` |
-| "translate tables too" | `enable_table_translation=true` |
-| "export to Word/DOCX/HTML/PDF/LaTeX" | `target_format` accordingly |
+| Parse / convert PDF → Markdown | `POST /api/v1/jobs/parse` |
+| Layout-preserving PDF translation | `POST /api/v1/jobs/translate-pdf` |
+| Markdown → DOCX/HTML/PDF/LaTeX | `POST /api/v1/jobs/convert` |
+| Outline / reading summary with parse | Same parse job; default sidecars `outline`+`summary` |
+| Disable reading aids | `enrichment=none` on parse |
+| Optional verification report | `enrichment=outline,summary,verification` |
 
-When the user's natural language is ambiguous, use sensible defaults from `references/parameter-glossary.md`. When the user specifies multiple preferences in one request, combine all applicable parameters in a single tool call.
+Do **not** trigger only because a PDF was mentioned. Do **not** fabricate `summary.md` / `outline.md` without downloading job results.
 
-## Cost-awareness protocol
+## Preferred path: Jobs API v1 (no MCP required)
 
-Before running any operation that consumes credits:
+Reuse the **same** `Idempotency-Key` if you retry the create call (avoid double charge). MCP tools mint a new key per invocation.
 
-1. Call `kolmopdf_estimate_cost` with the file path and intended operation.
-2. If `sufficient` is false: stop and report `shortfall` and the top-up URL `https://www.kolmopdf.com/subscription` to the user. Do not proceed.
-3. If `estimated_credits > 50`: tell the user the estimated cost and ask for confirmation before proceeding.
-4. Otherwise: proceed.
+```bash
+export KOLMOPDF_API_KEY=sk-...
+export BASE=https://www.kolmopdf.com
+export IDEM="parse-$(date +%s)"   # keep stable across retries of THIS job only
 
-## API key requirement
+# 1) Create parse job (default enrichment = outline,summary when server configured)
+curl -sS -X POST "$BASE/api/v1/jobs/parse" \
+  -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
+  -H "Idempotency-Key: $IDEM" \
+  -F "file=@/path/to/doc.pdf" \
+  -F "table_mode=markdown" \
+  -F "enable_translation=false"
+# → HTTP 202, body.id like job_...
 
-Tools require `KOLMOPDF_API_KEY` in the MCP server environment. If a tool returns `invalid_api_key`:
+# 2) Poll until status is succeeded | failed | cancelled
+curl -sS -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
+  "$BASE/api/v1/jobs/job_..."
 
-- Direct the user to https://www.kolmopdf.com/api-keys to create a key (requires Plus or Pro plan).
-- Tell the user to set `KOLMOPDF_API_KEY` in their environment and restart Claude Code.
-- Do not proceed with retries until the user confirms.
+# 3) Download (often ZIP when sidecars exist — even with images_as_url)
+curl -sSL -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
+  "$BASE/api/v1/jobs/job_.../download" -o result.bin
+# sniff: file result.bin  → zip or markdown
+```
 
-## Chained workflows
+MCP tool responses use field name `task_id` whose value is the Jobs API `id` (`job_...`).
 
-### PDF → DOCX/HTML/PDF/LaTeX (full pipeline)
+### Status values (v1)
 
-1. `kolmopdf_estimate_cost(file, "parse")` → check balance.
-2. `kolmopdf_parse_pdf(file)` → get `markdown_path`.
-3. `kolmopdf_convert_markdown(markdown_path, target_format)` → final file.
+`queued` | `processing` | `succeeded` | `failed` | `cancelled`
 
-If the PDF contains many images, pass the original directory (not just the markdown file) by zipping `output_root` first using your own tools, then pass the zip to convert. See `references/chain-recipes.md`.
+### Parse enrichment (sidecars only)
 
-### Read + ask Q&A about a paper
+- Default (omit field): server adds **outline.md** + **summary.md** (and meta). **Primary Markdown is unchanged.**
+- `enrichment=none` — no aids.
+- Download is often a **ZIP**: original parse files + sidecars.
+- Text longer than **600,000** characters → AI aids skipped; parse still succeeds.
+- Aids are **free** (0 extra points). Parse still costs 2 pts/page (3 with translation).
 
-1. `kolmopdf_parse_pdf(file)` → get `markdown_path` and `preview`.
-2. Use `Read` on `markdown_path` to load the full content.
-3. Answer the user's question grounded in the markdown.
+### Other endpoints
 
-### Translate then convert to bilingual deliverable
+```text
+POST /api/v1/jobs/translate-pdf
+POST /api/v1/jobs/convert
+GET  /api/v1/jobs/{id}
+GET  /api/v1/jobs/{id}/download
+POST /api/v1/jobs/{id}/cancel
+GET  /api/v1/balance
+```
 
-Option A (PDF deliverable):
-- `kolmopdf_translate_pdf(file, layout_modes=["side_by_side"])` → single PDF with side-by-side layout.
+## Optional path: MCP tools
 
-Option B (editable Markdown deliverable):
-- `kolmopdf_parse_pdf(file, enable_translation=true, output_options=["bilingual"])` → bilingual markdown.
+If `kolmopdf_*` MCP tools are installed and healthy, you may use them instead of curl. Prefer API v1 semantics if tool results look like legacy `task_id`/`completed` — still download and open local paths returned.
 
-## Parameter guidance
+## Cost protocol
 
-See `references/parameter-glossary.md` for the full parameter table and defaults. Highlights:
+1. Estimate pages × 2 (parse) or × 3 (parse+translate); convert = 1 credit.
+2. Optional: `GET /api/v1/balance`.
+3. If balance too low → stop; send user to https://www.kolmopdf.com/subscription.
+4. If estimate > 50 credits → confirm with user before create.
 
-- `formula_format=dollar` is the default and works with KaTeX/MathJax. Use `bracket` for LaTeX-strict downstream renderers.
-- `enable_cross_page_merge=true` is recommended when the source PDF has tables spanning page breaks.
-- `images_as_url=true` returns a single markdown file with 30-day URL references; use this for ephemeral pipelines. Default `false` returns a self-contained ZIP.
+## Natural language → parameters
+
+| User says | Form field |
+| --- | --- |
+| tables as images | `table_mode=image` |
+| dollar / bracket formulas | `formula_format=dollar\|bracket` |
+| translate while parsing | `enable_translation=true` + `target_language` |
+| no outline/summary | `enrichment=none` |
+| also verification report | `enrichment=outline,summary,verification` |
+| cross-page tables | `enable_cross_page_merge=true` |
+
+## Failure handling
+
+| error_code / situation | Action |
+| --- | --- |
+| 401 / invalid_api_key | https://www.kolmopdf.com/api-keys (Plus/Pro) |
+| 402 / insufficient_points | top-up URL |
+| parse_page_limit_exceeded / too large | split PDF locally |
+| job failed | show message; do not invent output files |
+| enrichment skipped in meta | tell user primary parse is still valid |
 
 ## Output handling
 
-After successful tool calls, treat `output.markdown_path` / `output.translated_pdf_path` / `output.output_path` as the canonical local file paths and reference them in your reply to the user. Show the user the absolute path; do not re-print the entire file unless asked.
+After download, unzip if needed. Report absolute paths of:
 
-## Failure modes
+- primary `*.md` (parse)
+- `outline.md` / `summary.md` when present
+- never dump entire files unless asked
 
-| error_code | Action |
-| --- | --- |
-| `invalid_api_key` | Stop; follow API key requirement section above. |
-| `insufficient_points` | Stop; report shortfall and top-up URL. |
-| `parse_page_limit_exceeded`, `parse_file_too_large` | Stop; suggest splitting the PDF locally. |
-| `parse_file_not_pdf`, `parse_file_invalid` | Stop; ask the user to re-export the PDF. |
-| `parse_error`, `parse_timeout` | Server auto-refunds points. Suggest retry with smaller page range. |
-| `client_polling_timeout` | Tell the user the task is still running server-side and suggest using `kolmopdf_get_task_status` with the task_id later. |
-| Network/5xx | Tools auto-retry up to 3 times. If still failing, suggest checking https://www.kolmopdf.com/contact. |
+## Chains
+
+### PDF → Markdown → DOCX
+
+1. parse job → download → find markdown path  
+2. convert job with that `.md` or zip of md+images  
+3. download convert result  
+
+### Read / Q&A
+
+1. parse (default enrichment ok)  
+2. Read primary markdown (and summary if present)  
+3. Answer grounded in those files only  

@@ -1,23 +1,47 @@
 # KolmoPDF Parameter Glossary
 
-Full parameter reference for the KolmoPDF tools. This file is not auto-loaded; the skill reads it on demand.
+Full parameter reference for KolmoPDF tools / Jobs API v1. This file is not auto-loaded; the skill reads it on demand.
 
-## `kolmopdf_parse_pdf`
+## Jobs API parse (`POST /api/v1/jobs/parse`) / `kolmopdf_parse_pdf`
 
 | Parameter | Type | Legal values | Default | Billing impact |
 | --- | --- | --- | --- | --- |
-| `file_path` | string | local path to a `.pdf` | — | — |
+| `file` / `file_path` | file / string | PDF | — | — |
 | `table_mode` | enum | `markdown`, `image` | `markdown` | none |
 | `formula_format` | enum | `dollar`, `bracket` | `dollar` | none |
 | `enable_translation` | boolean | `true`, `false` | `false` | `true` → 3 pts/page instead of 2 |
-| `target_language` | enum | `zh`, `en`, `ja`, `ko`, `fr`, `de`, `es`, `ru` | `zh` | only when `enable_translation=true` |
+| `target_language` | enum | `zh`, `en`, `ja`, `ko`, `fr`, `de`, `es`, `ru` | `zh` | only when translation on |
 | `output_options` | string[] | `original`, `translated`, `bilingual` | `original` | none |
-| `images_as_url` | boolean | `true`, `false` | `false` | none (`true` → single `.md` w/ 30-day URLs; `false` → ZIP) |
+| `images_as_url` | boolean | `true`, `false` | `false` | none — see download shape below |
 | `skip_rotation_detection` | boolean | `true`, `false` | `false` | none |
-| `enable_cross_page_merge` | boolean | `true`, `false` | `false` | none (merges tables across ≤ 3 pages) |
-| `output_subdir` | string | any dir name | `<task_id>` | none |
+| `enable_cross_page_merge` | boolean | `true`, `false` | `false` | none |
+| `enrichment` | string | `none`, or comma list: `outline`,`summary`,`tables`,`verification` | server default `outline,summary` when configured | **0** extra points |
+| `output_subdir` (MCP only) | string | dir name | `<task_id>` | none |
 
-Cost: parse only = `pages × 2`; parse + translate = `pages × 3`.
+Cost: parse only = `pages × 2`; parse + translate = `pages × 3`. Enrichment is free.
+
+### `enrichment` notes
+
+- Omit field → server defaults (usually outline+summary) **if** server has LLM configured.
+- `none` → no sidecars; download matches legacy shape.
+- Sidecars never rewrite primary Markdown body.
+- Text > 600k chars → AI features skipped; primary download unchanged.
+
+### Download shape
+
+| Case | Download |
+| --- | --- |
+| No sidecars, `images_as_url=false` | ZIP (md + images) or single md |
+| No sidecars, `images_as_url=true` | Single markdown (public image URLs) |
+| Sidecars produced (any `images_as_url`) | **ZIP**: primary parse entry + `outline.md` / `summary.md` / `enrichment_meta.json` / … |
+
+MCP always sniffs ZIP magic (`PK`) after download; do not assume URL mode is always a raw `.md` file.
+
+MCP tool field `task_id` holds the Jobs API `id` (`job_...`).
+
+### Idempotency
+
+Send `Idempotency-Key` on create. **Retries of the same logical request must reuse the same key** to avoid double charge. MCP generates a new UUID per tool call (no auto-retry of create).
 
 ## `kolmopdf_translate_pdf`
 
@@ -31,7 +55,7 @@ Cost: parse only = `pages × 2`; parse + translate = `pages × 3`.
 | `enable_table_translation` | boolean | `true`, `false` | `false` |
 | `output_subdir` | string | any dir name | `<task_id>` |
 
-Cost: `pages × 2`.
+Cost: `pages × 2`. No parse-stage enrichment.
 
 ## `kolmopdf_convert_markdown`
 
@@ -58,15 +82,17 @@ Cost: 1 credit/task.
 | `es` | Spanish |
 | `ru` | Russian |
 
-## ZIP output structure (`images_as_url=false`)
+## Local extract layout (MCP)
 
 ```
 <KOLMOPDF_OUTPUT_DIR>/<task_id>/
-├── <document>.md          # canonical markdown_path (first *.md found)
-├── images/                # extracted figures → images_dir
-│   ├── img-0001.png
-│   └── ...
-└── (other assets, flattened)
+├── result.zip                 # when download is ZIP
+├── <document>.md              # primary markdown (not outline/summary)
+├── outline.md                 # optional sidecar
+├── summary.md                 # optional sidecar
+├── enrichment_meta.json       # optional
+├── images/                    # if present
+└── ...
 ```
 
-When `images_as_url=true`, the result is a single `result.md` with public image URLs (cached 30 days) and `images_dir = null`.
+Primary markdown is chosen by heuristic (longest non-sidecar `.md`), not “first entry in ZIP”.

@@ -1,23 +1,25 @@
 # KolmoPDF Skill
-[![npm version](https://img.shields.io/npm/v/@kolmopdf/mcp-server)](https://www.npmjs.com/package/@kolmopdf/mcp-server)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 
-High-fidelity PDF→Markdown parsing, layout-preserving PDF translation, and Markdown→DOCX/HTML/PDF/LaTeX conversion — delivered as a Claude Code plugin, a Codex CLI / Cursor skill, and a standalone MCP server.
-
-Need to install kolmopdf MCP server `@kolmopdf/mcp-server`
+High-fidelity PDF→Markdown parsing, layout-preserving PDF translation, Markdown export, and optional parse-time reading aids (outline/summary) via the **KolmoPDF Jobs API v1**.
 
 ## Install
 
-```
+```bash
 npx skills add komoai2026/komolpdf-skill
 ```
 
-Then set `KOLMOPDF_API_KEY` in your environment and restart Claude Code.
+Set your API key (Plus/Pro):
 
 ```bash
 export KOLMOPDF_API_KEY=sk-xxxxxxxxxxxxxxxx
 ```
+
+This skill is **API-first** (curl / Bash against `https://www.kolmopdf.com/api/v1/jobs/*`).  
+Optional: install the MCP server `@kolmopdf/mcp-server` for tool wrappers.
+
+Docs: https://www.kolmopdf.com/api-docs
 
 ## License
 
