@@ -35,7 +35,9 @@ Cost: parse only = `pages × 2`; parse + translate = `pages × 3`. Enrichment is
 | No sidecars, `images_as_url=true` | Single markdown (public image URLs) |
 | Sidecars produced (any `images_as_url`) | **ZIP**: primary parse entry + `outline.md` / `summary.md` / `enrichment_meta.json` / … |
 
-MCP always sniffs ZIP magic (`PK`) after download; do not assume URL mode is always a raw `.md` file.
+After the job succeeds, `GET /api/v1/jobs/{id}` includes `result.filename`, `result.kind`, `result.content_type`, and zip `result.files`. Save the download as `result.filename`. Never hard-code `.zip` / `.pdf` / `.md`.
+
+MCP / DSH tools sniff magic bytes (`PK` / `%PDF`) after download and rename; translate may return a ZIP of PDFs when both layout modes are requested.
 
 MCP tool field `task_id` holds the Jobs API `id` (`job_...`).
 

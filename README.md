@@ -16,7 +16,10 @@ Set your API key (Plus/Pro):
 export KOLMOPDF_API_KEY=sk-xxxxxxxxxxxxxxxx
 ```
 
-This skill is **API-first** (curl / Bash against `https://www.kolmopdf.com/api/v1/jobs/*`).  
+This skill is **API-first** (curl / Bash against `https://www.kolmopdf.com/api/v1/jobs/*`).
+
+Wait on `GET /api/v1/jobs/{id}/events` (SSE, `curl -N`). After `succeeded`, save the download as `result.filename` — parse/translate/convert may return ZIP or a single file. Do not hard-code `.zip` / `.pdf`.
+
 Optional: install the MCP server `@kolmopdf/mcp-server` for tool wrappers.
 
 Docs: https://www.kolmopdf.com/api-docs
