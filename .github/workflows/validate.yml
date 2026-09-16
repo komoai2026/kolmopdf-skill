@@ -1,0 +1,21 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate distribution files
+        run: |
+          test -f SKILL.md
+          test -f references/chain-recipes.md
+          test -f references/parameter-glossary.md
+          test -f LICENSE
+          grep -q '^name: kolmopdf$' SKILL.md
+          grep -q 'komoai2026/kolmopdf-skill' README.md
+          ! grep -q 'komoai2026/komolpdf-skill' README.md
