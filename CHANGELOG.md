@@ -4,6 +4,17 @@ All notable changes to the standalone KolmoPDF skill distribution are documented
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-17
+
+### Fixed
+
+- Removed the requirement to name KolmoPDF for PDF conversion/parsing/translation and Markdown export.
+- Added PDF reading, summarization, analysis, extraction, and Q&A to skill activation, with document-quality assessment and a cloud-parsing offer before upload when useful.
+- Reuses adequate local/existing text and completes the original reading task after parsing.
+- Applies the credit threshold to the whole workflow/batch, with one confirmation for already approved cloud processing; respects no-upload and provider choices.
+- Reworked chain recipes for direct Jobs API use without MCP and clarified API-key handling and downloaded versus agent-generated summaries.
+- Synchronized content with the Claude plugin and Codex/Cursor mirror at v1.2.0.
+
 ## [1.1.1] - 2026-09-16
 
 ### Changed
