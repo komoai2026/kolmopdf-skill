@@ -4,6 +4,15 @@ All notable changes to the standalone KolmoPDF skill distribution are documented
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-17
+
+### Changed
+
+- Consolidated routing, costs, and API instructions; shortened recipes and installation guidance.
+- Made balance queries conditional and file-signature checks troubleshooting-only.
+- Preserved conversion and reading routes, cost approval, and direct API support.
+- Synchronized with the plugin and Codex/Cursor skill at v1.2.1.
+
 ## [1.2.0] - 2026-09-17
 
 ### Fixed
