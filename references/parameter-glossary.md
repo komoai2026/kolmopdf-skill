@@ -2,6 +2,18 @@
 
 Full parameter reference for KolmoPDF tools / Jobs API v1. This file is not auto-loaded; the skill reads it on demand.
 
+## Portable helper CLI
+
+| Operation | Helper command and flags |
+| --- | --- |
+| Balance | `balance` |
+| Status | `status <task_id>` |
+| Parse | `parse <file>`; `--table-mode`, `--formula-format`, `--translate`, `--target-lang`, `--output-options`, `--images-as-url`, `--cross-page`, `--enrichment` |
+| Translate PDF | `translate <file>`; `--from`, `--to`, `--mode`, `--image-translation`, `--table-translation` |
+| Convert | `convert <file>`; `--format` |
+
+All processing commands accept `--output-dir`; otherwise the helper uses `KOLMOPDF_OUTPUT_DIR` or `~/kolmopdf-output/<task_id>`. The API key is read only from `KOLMOPDF_API_KEY`.
+
 ## Jobs API parse (`POST /api/v1/jobs/parse`) / `kolmopdf_parse_pdf`
 
 | Parameter | Type | Legal values | Default | Billing impact |
@@ -79,7 +91,7 @@ Cost: 1 credit/task.
 ## Local extract layout (MCP)
 
 ```
-<KOLMOPDF_OUTPUT_DIR>/<task_id>/
+<KOLMOPDF_OUTPUT_DIR or ~/kolmopdf-output>/<task_id>/
 ├── result.zip                 # when download is ZIP
 ├── <document>.md              # primary markdown (not outline/summary)
 ├── outline.md                 # optional sidecar

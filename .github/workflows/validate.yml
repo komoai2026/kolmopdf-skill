@@ -15,7 +15,33 @@ jobs:
           test -f SKILL.md
           test -f references/chain-recipes.md
           test -f references/parameter-glossary.md
+          test -f scripts/jobs.mjs
+          test -f tests/jobs.test.mjs
           test -f LICENSE
           grep -q '^name: kolmopdf$' SKILL.md
           grep -q 'komoai2026/kolmopdf-skill' README.md
           ! grep -q 'komoai2026/komolpdf-skill' README.md
+
+  platform-helper:
+    name: Helper compatibility (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: windows-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node -e "if (process.arch !== '${{ matrix.arch }}') throw new Error('Expected ${{ matrix.arch }}, got ' + process.arch)"
+      - run: node --check scripts/jobs.mjs
+      - run: node --test tests/jobs.test.mjs

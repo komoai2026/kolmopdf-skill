@@ -4,6 +4,16 @@ All notable changes to the standalone KolmoPDF skill distribution are documented
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-09-21
+
+### Fixed
+
+- Added a bundled zero-dependency Node.js Jobs API helper for macOS, Linux, and Windows.
+- Removed the processing workflow's dependency on `jq`, GNU `timeout`, and Homebrew coreutils.
+- Added safe output filenames, ZIP/PDF magic-byte correction, bounded polling, key redaction, and stable `~/kolmopdf-output/<task_id>/` output paths.
+- Added Linux, Windows, Apple Silicon Mac, and Intel Mac helper CI plus macOS environment guidance.
+- Preserved DOCX outputs instead of renaming their ZIP container to `.zip`, with explicit helper paths for Claude Code, Codex, and Cursor.
+
 ## [1.2.1] - 2026-09-17
 
 ### Changed

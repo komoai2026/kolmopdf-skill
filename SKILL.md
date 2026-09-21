@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Write, mcp__kolmopdf__kolmopdf_parse_pdf, mcp__kolmop
 
 # KolmoPDF
 
-Use Jobs API v1 through Bash/curl, or the corresponding MCP tools when configured.
+Prefer the corresponding MCP tools when configured. Otherwise run the bundled Node.js Jobs API helper; do not rebuild the workflow with `jq`, GNU `timeout`, or platform-specific shell one-liners.
 
 - Base URL: `https://www.kolmopdf.com`
 - Authentication: `Authorization: Bearer $KOLMOPDF_API_KEY` from the environment
@@ -34,49 +34,43 @@ Estimate the whole chain or batch using local page metadata or `kolmopdf_estimat
 
 Reuse available balance information; query `GET /api/v1/balance` when needed. If the balance is insufficient, report the shortfall and account top-up guidance.
 
-## API workflow
+## Execution
 
-1. Create a job using the endpoint and multipart fields below. Each logical job has its own `Idempotency-Key`; reuse that key when retrying the same submission.
-2. Wait on `GET /api/v1/jobs/{id}/events` using SSE. If SSE is unavailable, poll `GET /api/v1/jobs/{id}` every 3 seconds for up to 30 minutes. Terminal states are `succeeded`, `failed`, and `cancelled`.
-3. On success, download from `GET /api/v1/jobs/{id}/download` using `result.filename` and `result.kind`. Extract ZIP results. On failure/cancellation, report the returned status; on timeout, retain the job ID for a later status check.
+### Preferred: MCP tools
 
-| Operation | Create endpoint | Multipart fields |
-| --- | --- | --- |
-| Parse | `/api/v1/jobs/parse` | `file`, `table_mode`, `enable_translation`, `target_language`, `output_options`, `enrichment` |
-| Translate PDF | `/api/v1/jobs/translate-pdf` | `file`, `sourceLanguage`, `targetLanguage`, `layoutModes`, `enableImageTranslation`, `enableTableTranslation` |
-| Convert | `/api/v1/jobs/convert` | `file`, `targetFormat` |
+Use `kolmopdf_estimate_cost`, then the requested processing tool. MCP waits, downloads, detects the real file type, extracts ZIP results, and returns absolute local paths.
 
-Send booleans as `true`/`false` and lists as comma-separated values. The [parameter glossary](references/parameter-glossary.md) covers optional fields and MCP argument names. MCP tools wait and download internally; their `task_id` is the Jobs API `id`.
+### Portable fallback: bundled Node.js helper
 
-### Parse example
+The Skill includes `scripts/jobs.mjs`. It requires only Node.js 20+, works on macOS/Linux/Windows, and does not require `jq`, GNU `timeout`, or Homebrew coreutils. It reads the key only from `KOLMOPDF_API_KEY`; never pass credentials on the command line.
 
-Run in a chosen output directory with `KOLMOPDF_API_KEY` already configured:
+Resolve the helper to an absolute path before running it:
+
+| Client | Helper path |
+| --- | --- |
+| Claude Code | `${CLAUDE_SKILL_DIR}/scripts/jobs.mjs` (expanded by Claude Code) |
+| Codex | `~/.codex/skills/kolmopdf/scripts/jobs.mjs` for the standard global install |
+| Cursor | `~/.cursor/skills/kolmopdf/scripts/jobs.mjs` for the standard global install |
+| Other | Locate `scripts/jobs.mjs` next to this `SKILL.md` |
+
+Replace `<HELPER_PATH>` below with that absolute path. Do not copy a secret or generated helper into the project.
 
 ```bash
-BASE=https://www.kolmopdf.com
-IDEM="parse-$(date +%s)-$RANDOM"
-
-JOB=$(curl -fsS "$BASE/api/v1/jobs/parse" \
-  -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
-  -H "Idempotency-Key: $IDEM" \
-  -F "file=@/path/to/doc.pdf" \
-  -F "table_mode=markdown" | jq -er .id)
-
-timeout 1800 curl -N -fsS \
-  -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
-  -H "Accept: text/event-stream" \
-  "$BASE/api/v1/jobs/$JOB/events"
-
-META=$(curl -fsS -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
-  "$BASE/api/v1/jobs/$JOB")
-if [ "$(printf '%s' "$META" | jq -r .status)" = succeeded ]; then
-  NAME=$(printf '%s' "$META" | jq -er .result.filename)
-  curl -fSL -H "Authorization: Bearer $KOLMOPDF_API_KEY" \
-    "$BASE/api/v1/jobs/$JOB/download" -o "$NAME"
-else
-  printf '%s\n' "$META" | jq '{id, status, error}'
-fi
+node "<HELPER_PATH>" balance
+node "<HELPER_PATH>" parse "/absolute/path/to/doc.pdf" --table-mode markdown
+node "<HELPER_PATH>" translate "/absolute/path/to/doc.pdf" --from ja --to en --mode side_by_side
+node "<HELPER_PATH>" convert "/absolute/path/to/doc.md" --format docx
 ```
+
+The helper creates one idempotent job, polls every 3 seconds for up to `KOLMOPDF_MAX_POLL_MINUTES` (default 30), downloads using the server filename, checks ZIP/PDF magic bytes, and writes JSON to stdout. Outputs default to `~/kolmopdf-output/<task_id>/`; override with `KOLMOPDF_OUTPUT_DIR` or `--output-dir`. If `extracted=false`, keep the downloaded archive and extract it once with the platform's archive tool; do not rerun the paid job.
+
+Use `status <task_id>` after a timeout:
+
+```bash
+node "<HELPER_PATH>" status "job_..."
+```
+
+The [parameter glossary](references/parameter-glossary.md) covers all MCP and helper argument names.
 
 ## Results
 

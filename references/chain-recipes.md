@@ -1,6 +1,6 @@
 # KolmoPDF Chain Recipes
 
-Use the routing, cost, and API workflow in [SKILL.md](../SKILL.md).
+Use the routing and cost rules in [SKILL.md](../SKILL.md). Prefer MCP tools; otherwise run the bundled `scripts/jobs.mjs` helper rather than reconstructing HTTP polling in shell.
 
 ## PDF → Markdown → DOCX/HTML/PDF/LaTeX
 
