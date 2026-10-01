@@ -22,7 +22,7 @@ All processing commands accept `--output-dir`; otherwise the helper uses `KOLMOP
 | `table_mode` | enum | `markdown`, `image` | `markdown` | none |
 | `formula_format` | enum | `dollar`, `bracket` | `dollar` | none |
 | `enable_translation` | boolean | `true`, `false` | `false` | `true` → 3 pts/page instead of 2 |
-| `target_language` | enum | `zh`, `en`, `ja`, `ko`, `fr`, `de`, `es`, `ru` | `zh` | only when translation on |
+| `target_language` | enum | `zh`, `en`, `ja`, `ko`, `fr`, `de`, `es`, `ru`, `pt` | `zh` | only when translation on |
 | `output_options` | string[] | `original`, `translated`, `bilingual` | `original` | none |
 | `images_as_url` | boolean | `true`, `false` | `false` | none — see download shape below |
 | `skip_rotation_detection` | boolean | `true`, `false` | `false` | none |
@@ -87,6 +87,7 @@ Cost: 1 credit/task.
 | `de` | German |
 | `es` | Spanish |
 | `ru` | Russian |
+| `pt` | Portuguese |
 
 ## Local extract layout (MCP)
 
