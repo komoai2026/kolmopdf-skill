@@ -281,7 +281,6 @@ async function executeBalance(apiKey, baseUrl) {
   const res = await fetch(`${baseUrl}/api/v1/balance`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "X-API-Key": apiKey,
     },
   });
   const text = await res.text();
@@ -307,7 +306,6 @@ async function executeStatus(taskId, apiKey, baseUrl) {
   const res = await fetch(`${baseUrl}/api/v1/jobs/${encodeURIComponent(taskId)}`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "X-API-Key": apiKey,
     },
   });
   const text = await res.text();
@@ -415,14 +413,9 @@ async function executeProcessJob(command, filePath, options, apiKey, baseUrl, en
   }
 
   // Submit job with Idempotency-Key
-  const submitRes = await fetch(`${baseUrl}${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "X-API-Key": apiKey,
-      "Idempotency-Key": randomUUID(),
-    },
-    body: form,
+  const { uploadJob } = await import('./jobs-upload.mjs');
+  const submitRes = await uploadJob(`${baseUrl}${endpoint}`, form, {
+    Authorization: `Bearer ${apiKey}`, 'Idempotency-Key': options['upload-id'] || randomUUID(),
   });
 
   const submitText = await submitRes.text();
@@ -482,7 +475,6 @@ async function executeProcessJob(command, filePath, options, apiKey, baseUrl, en
     const pollRes = await fetch(`${baseUrl}/api/v1/jobs/${encodeURIComponent(taskId)}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "X-API-Key": apiKey,
       },
     });
     const pollText = await pollRes.text();
@@ -500,7 +492,6 @@ async function executeProcessJob(command, filePath, options, apiKey, baseUrl, en
   const downloadRes = await fetch(`${baseUrl}/api/v1/jobs/${encodeURIComponent(taskId)}/download`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "X-API-Key": apiKey,
     },
   });
 
